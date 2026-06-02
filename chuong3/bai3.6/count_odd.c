@@ -51,24 +51,10 @@ void *count_odd_range(void *arg) {
 /* Dem so le KHONG dung multithread */
 long long count_odd_single() {
     long long count = 0;
-    long long n = MAX_NUMBER;
 
-    // Tinh truc tiep: so le tu 1 den N
-    // So le trong [1, N] = ceil(N / 2)
-    // Nhung de thay thoi gian, ta chia thanh nhieu doan va tinh
-    long long chunk_size = 10000000LL; // 10 trieu moi doan
-    long long i;
-
-    for (i = 1; i <= n; i += chunk_size) {
-        long long end = i + chunk_size - 1;
-        if (end > n) end = n;
-
-        long long first_odd = (i % 2 == 1) ? i : i + 1;
-        long long last_odd = (end % 2 == 1) ? end : end - 1;
-
-        if (first_odd <= last_odd) {
-            count += (last_odd - first_odd) / 2 + 1;
-        }
+    for (long long i = 1; i <= MAX_NUMBER; i++) {
+        if (i % 2 == 1)
+            count++;
     }
 
     return count;
