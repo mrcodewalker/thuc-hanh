@@ -17,16 +17,21 @@ DEV_FILE="/dev/myfs_dev"
 # 1. Dọn dẹp trạng thái cũ (nếu có)
 echo "[1] Kiểm tra và dọn dẹp các tài nguyên cũ..."
 
+# Giải phóng các tiến trình đang chiếm dụng tài nguyên (nếu bị treo)
+echo "    -> Đang giải phóng các tiến trình đang mở $MOUNT_DIR hoặc $DEV_FILE..."
+sudo fuser -k -9 "$MOUNT_DIR" "$DEV_FILE" >/dev/null 2>&1
+sleep 1
+
 # Kiểm tra nếu thư mục mount đang hoạt động
 if mountpoint -q "$MOUNT_DIR" 2>/dev/null || grep -q "$MOUNT_DIR" /proc/mounts; then
     echo "    -> Đang unmount $MOUNT_DIR..."
-    sudo umount "$MOUNT_DIR"
+    sudo umount -f "$MOUNT_DIR" 2>/dev/null || sudo umount -l "$MOUNT_DIR"
 fi
 
 # Gỡ bỏ module cũ nếu đang được nạp
 if lsmod | grep -q "^myfs "; then
     echo "    -> Đang gỡ bỏ Kernel Module 'myfs' cũ..."
-    sudo rmmod myfs
+    sudo rmmod -f myfs 2>/dev/null || sudo rmmod myfs
 fi
 
 # Dọn dẹp các tệp tin cũ do quá trình build trước sinh ra

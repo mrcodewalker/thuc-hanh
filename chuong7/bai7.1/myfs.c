@@ -204,22 +204,7 @@ static ssize_t myfs_read(struct file *file, char __user *buf, size_t count, loff
         goto out;
     }
 
-    if (*ppos >= size) {
-        ret = 0;
-        goto out;
-    }
-
-    if (*ppos + count > size) {
-        count = size - *ppos;
-    }
-
-    if (copy_to_user(buf, data_ptr + *ppos, count)) {
-        ret = -EFAULT;
-        goto out;
-    }
-
-    *ppos += count;
-    ret = count;
+    ret = simple_read_from_buffer(buf, count, ppos, data_ptr, size);
 
 out:
     mutex_unlock(&myfs_lock);
@@ -369,28 +354,12 @@ static int dev_release(struct inode *inode, struct file *file) {
 
 /* Doc tu thiet bi: tra ve noi dung trong bo dem toan cuc */
 static ssize_t dev_read(struct file *file, char __user *buf, size_t count, loff_t *ppos) {
-    ssize_t ret = 0;
+    ssize_t ret;
     mutex_lock(&myfs_lock);
-
-    if (*ppos >= device_data_size) {
-        ret = 0;
-        goto out;
+    ret = simple_read_from_buffer(buf, count, ppos, device_buffer, device_data_size);
+    if (ret > 0) {
+        pr_info("myfs_dev: Da doc %zd bytes tu thiet bi gui ve user space.\n", ret);
     }
-
-    if (*ppos + count > device_data_size) {
-        count = device_data_size - *ppos;
-    }
-
-    if (copy_to_user(buf, device_buffer + *ppos, count)) {
-        ret = -EFAULT;
-        goto out;
-    }
-
-    *ppos += count;
-    ret = count;
-    pr_info("myfs_dev: Da doc %zu bytes tu thiet bi gui ve user space.\n", count);
-
-out:
     mutex_unlock(&myfs_lock);
     return ret;
 }
