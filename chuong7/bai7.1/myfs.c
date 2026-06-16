@@ -23,6 +23,10 @@
 #include <linux/statfs.h>
 #include <linux/mutex.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+#include <linux/fs_context.h>
+#endif
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Linux Programming Student");
 MODULE_DESCRIPTION("A custom Linux virtual filesystem (myfs) integrated with a misc device file");
@@ -57,8 +61,8 @@ static struct inode *myfs_get_inode(struct super_block *sb, const struct inode *
     {
         struct timespec64 ts = current_time(inode);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
-        inode->i_atime = ts;
-        inode->i_mtime = ts;
+        inode_set_atime_to_ts(inode, ts);
+        inode_set_mtime_to_ts(inode, ts);
         inode_set_ctime_to_ts(inode, ts);
 #else
         inode->i_atime = ts;
@@ -279,7 +283,11 @@ static const struct file_operations myfs_file_operations = {
  * 4. KHOI TAO VA GAN MOUNTING CHO FILESYSTEM
  * ====================================================
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+static int myfs_fill_super(struct super_block *sb, struct fs_context *fc) {
+#else
 static int myfs_fill_super(struct super_block *sb, void *data, int silent) {
+#endif
     struct inode *root_inode;
 
     sb->s_blocksize = 1024;
@@ -302,7 +310,20 @@ static int myfs_fill_super(struct super_block *sb, void *data, int silent) {
     return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+static int myfs_get_tree(struct fs_context *fc) {
+    return get_tree_nodev(fc, myfs_fill_super);
+}
+
+static const struct fs_context_operations myfs_context_ops = {
+    .get_tree = myfs_get_tree,
+};
+
+static int myfs_init_fs_context(struct fs_context *fc) {
+    fc->ops = &myfs_context_ops;
+    return 0;
+}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
 static struct dentry *myfs_mount(struct file_system_type *fs_type, int flags, const char *dev_name, void *data) {
     pr_info("myfs: Yeu cau mount thiet bi thong qua duong dan: %s\n", dev_name);
     /* Su dung co che mount khong gian ao, bo qua device block vat ly thuc te */
@@ -322,7 +343,9 @@ static void myfs_kill_sb(struct super_block *sb) {
 static struct file_system_type myfs_type = {
     .owner   = THIS_MODULE,
     .name    = "myfs",
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+    .init_fs_context = myfs_init_fs_context,
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
     .mount   = myfs_mount,
 #else
     .get_sb  = myfs_get_sb,
